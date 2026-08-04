@@ -1,0 +1,43 @@
+# Attribution settings for the factual setting (BEAR).
+# Identical to config/attribution_linguistic.yaml except for smaller token
+# batches: the factual models are GPT-2 medium, which leaves less GPU headroom
+# after the model weights and TrackStar buffers.
+# `name` and `method` are always supplied on the command line by run/attribute_full.sh.
+
+name: placeholder_overridden_by_run_scripts
+seeds: [43]
+artifacts_dir: artifacts_attribution
+
+model:
+  max_length: 512
+
+attribution:
+  method: vanilla
+  unit_norm: true
+
+  projection_dim: 64
+  use_optimizer_state: false
+  trackstar_downweight_components: 1000
+  token_batch_size: 16384
+  max_batch_size: 256
+  trackstar_score_token_batch_size: 8192
+  use_tf32_matmuls: true
+
+  ekfac_filter_modules: "lm_head"
+  ekfac_lambda_damp: 0.1
+  ekfac_aggregate_query: false
+  ekfac_token_batch_size: 4096
+  ekfac_score_token_batch_size: 4096
+  ekfac_query_chunk_size: 16
+  ekfac_query_low_rank: 32
+  ekfac_sketch: true
+
+  scoring_base_size: 0
+  stats_base_size: 1000
+  prec_base_size: 0
+  k_precisions: [5, 10, 20, 50, 75, 100]
+
+  # Facts keep a deeper inspection window: the qualitative categorization of
+  # retrieved sentences (co-occurrence / single-entity / frame) reads further
+  # down the ranking than the linguistic confound analysis.
+  inspect_top_k: 100

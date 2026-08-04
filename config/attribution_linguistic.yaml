@@ -1,0 +1,45 @@
+# Attribution settings for the linguistic setting.
+# Held fixed across all four phenomena and all four token budgets, so that a
+# difference between two panels is a difference in the data or the model, not
+# in how attribution was configured.
+# `name` and `method` are always supplied on the command line by run/attribute_full.sh.
+
+name: placeholder_overridden_by_run_scripts
+seeds: [43]                     # single seed; influence estimates are known to
+                                # vary with training stochasticity, so a
+                                # multi-seed run would be the stronger design
+artifacts_dir: artifacts_attribution
+
+model:
+  max_length: 512
+
+attribution:
+  method: vanilla               # overridden per method via --method
+  unit_norm: true               # cosine-normalize, so all methods share a scale
+
+  # ── Random projection (GradSim / TrackStar; also the sketch for K-FAC) ──
+  projection_dim: 64            # two-sided 64x64 Rademacher sketch per weight module
+  use_optimizer_state: false    # GradSim: no Adam second-moment normalization
+  trackstar_downweight_components: 1000   # TrackStar: query-dominant directions suppressed
+  token_batch_size: 32768
+  max_batch_size: 256           # cap docs/batch: many short sentences can OOM under the token budget alone
+  trackstar_score_token_batch_size: 16384  # scoring does more per-example GPU work than collection
+  use_tf32_matmuls: true
+
+  # ── (E)K-FAC ──────────────────────────────────────────────────────────────
+  ekfac_filter_modules: "lm_head"   # exclude the LM head; token embeddings are excluded too
+  ekfac_lambda_damp: 0.1            # applied in auto_mean mode: λ_real = λ · mean eigenvalue
+  ekfac_aggregate_query: false      # keep per-pair resolution
+  ekfac_token_batch_size: 4096      # small: Hessian fitting accumulates Kronecker factors
+  ekfac_score_token_batch_size: 4096
+  ekfac_query_chunk_size: 16
+  ekfac_query_low_rank: 32
+  ekfac_sketch: true                # fused scheme (iii) when combined with --ekfac_modified_projections true
+
+  # ── Scoring ───────────────────────────────────────────────────────────────
+  # 0 = use everything in the prepared training set; the 5,000,000 D_base cap
+  # is applied earlier, at preparation time, by prepare/linguistic.py.
+  scoring_base_size: 0
+  stats_base_size: 1000
+  prec_base_size: 0
+  k_precisions: [5, 10, 20, 50, 75, 100]

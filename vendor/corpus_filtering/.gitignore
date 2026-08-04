@@ -1,0 +1,5 @@
+data/*
+output/*
+UD_English-GUM/*
+*.egg-info/
+__pycache__/

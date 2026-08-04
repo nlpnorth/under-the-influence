@@ -1,0 +1,49 @@
+[project]
+name = "influence-on-what"
+version = "1.0.0"
+description = "A controlled evaluation of influence functions: do they recover the training data responsible for a learned property?"
+requires-python = ">=3.11"
+dependencies = [
+    "bergson",
+    "corpus-filtering",
+    "torch>=2.4",
+    "transformers>=4.40",
+    "datasets>=2.18",
+    "trl>=0.8",
+    "peft>=0.10",
+    "simple-parsing>=0.1.5",
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+    "python-dotenv>=1.0",
+    "codecarbon>=3.2.6",       # energy / CO2 accounting reported in §Ethical Considerations
+    "bm25s>=0.3.9",            # the BM25 baseline
+    "lm-pub-quiz>=0.3.3",      # BEAR probing
+    "conllu>=6.0.0",           # parsed-corpus reader used by the linguistic filters
+    "nltk>=3.9.4",             # sentence segmentation
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/influence_on_what"]
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+# Both are vendored under vendor/ rather than pinned as git dependencies, so
+# the bundle is self-contained. See vendor/VENDORED.md for provenance.
+bergson = { path = "vendor/bergson", editable = true }
+corpus-filtering = { path = "vendor/corpus_filtering", editable = true }
+torch = [
+  # CUDA build on Linux; the default wheel elsewhere (CPU-only, enough for
+  # inspecting outputs but not for running the pipeline).
+  { index = "pytorch-cuda", marker = "sys_platform == 'linux'" },
+]

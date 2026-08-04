@@ -28,7 +28,8 @@ run/          entry points — one per pipeline step, sbatch-able and bash-able
 config/       all paths, budgets, phenomena, model architectures, hyperparameters
 src/          the influence_on_what package
 vendor/       bergson, corpus_filtering, goldfish (see vendor/VENDORED.md)
-data/         the NPI minimal-pair set, BEAR corpus statistics, corpus download scripts
+data/         BLiMP and BEAR, the NPI minimal-pair set, BEAR corpus statistics,
+              corpus download scripts (see data/README.md)
 ```
 
 Every script in `run/` opens with a comment block stating what it does, what it
@@ -145,6 +146,20 @@ part of this bundle. Their schemas are documented in the module docstrings of
 
 ## Data
 
+Both probing benchmarks ship with the bundle — nothing is downloaded at run
+time, and `data/README.md` records source, revision and license for each:
+
+- **BLiMP** — `data/blimp/`, the 11 paradigm files the pipeline scores (CC BY 4.0,
+  [github.com/alexwarstadt/blimp](https://github.com/alexwarstadt/blimp)).
+  Files for other paradigms are downloaded into the same directory on first
+  use, so adding a phenomenon needs no manual fetch.
+- **BEAR** — `data/lm-pub-quiz/datasets/bear/`, all 60 relations / 7,731
+  instances, at the revision `lm-pub-quiz` pins (CC BY-SA 4.0,
+  [github.com/lm-pub-quiz/BEAR](https://github.com/lm-pub-quiz/BEAR)). Laid out
+  as the `lm-pub-quiz` cache; `config/env.sh` sets `LM_PUB_QUIZ_CACHE_ROOT` so
+  `Dataset.from_name("BEAR")` resolves to it. Export that variable yourself if
+  you call a module outside `run/`, or let the package download its own copy.
+
 Neither corpus is redistributed here.
 
 - **Common Corpus** (English subset) — a collection of uncopyrighted and
@@ -154,7 +169,7 @@ Neither corpus is redistributed here.
   `chunk_XX/train_full.txt` layout the pipeline expects. Run it locally and
   transfer the result; see the script header.
 
-Both corpora must be sentence-segmented (NLTK `sent_tokenize`) and laid out as
+Corpora must be sentence-segmented (NLTK `sent_tokenize`) and laid out as
 `chunk_XX/train_full.txt`, one sentence per line, before anything else runs.
 Set `$COMMON_CORPUS_ROOT` and `$WIKI_ROOT` in `config/env.sh` to point at them.
 
@@ -168,21 +183,15 @@ parsers, on `deberta-v3-large`, `luke-large`, `roberta-large` and
 sentences on which at least two of them produced different dependency
 structures.
 
-Included in `data/`:
+Also included in `data/`:
 
 - `minimal_pairs_npi.tsv` — the NPI minimal-pair set constructed for this work,
   derived from Universal Dependencies English treebanks. Used instead of
-  BLiMP's NPI suite, whose `npi_present` probes swap an adverb for an NPI (so
-  the ablated model, having never seen the NPI, scores *higher* than the full
-  model) and whose `only_npi_licensor_present` probes always contrast *only*
-  against *even*, which the tokenizer splits into two tokens while *only*
-  stays one — a length confound rather than a grammatical contrast.
+  BLiMP's NPI suite.
 - `bear_corpus_stats.json`, `bear_corpus_stats_wikipedia.json` — per-fact
   entity occurrence and co-occurrence counts, the basis of the
   "corpus-supported" (≥10 co-occurrences) criterion. Regenerate with
   `python -m influence_on_what.prepare.bear_cooccurrence`.
 - `wikidata_alias_cache.json` — cached Wikidata labels, aliases and demonyms,
   so the fact filter does not re-query the API.
-
-BLiMP paradigm files are downloaded on first use into `data/blimp/`.
 

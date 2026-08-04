@@ -8,7 +8,7 @@
 #
 # Scores every held-out minimal pair under a trained checkpoint and reports how
 # often the model prefers the grammatical member; for the factual setting it
-# probes all 96 BEAR relations instead.  A model "learned" a query when it
+# probes all 60 BEAR relations instead.  A model "learned" a query when it
 # ranks the correct member first — for facts, under ALL THREE of the relation's
 # templates.
 #

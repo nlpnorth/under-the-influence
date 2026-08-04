@@ -16,7 +16,7 @@ Phenomena tested (BLiMP sub-tasks grouped by category, plus BEAR):
   subject_verb_agreement   — distractor agreement, irregular & regular plural SVA
 
 BEAR probing (run by default, skip with --no-bear):
-  Uses lm-pub-quiz to probe all 96 BEAR relations via pseudo-log-likelihood scoring.
+  Uses lm-pub-quiz to probe all 60 BEAR relations via pseudo-log-likelihood scoring.
   For each relation the model's predicted answer is the candidate with the highest PLL;
   reported metrics per relation and overall:
     accuracy       — fraction of instances where the model's top-1 prediction is correct
@@ -624,7 +624,7 @@ def run_bear_probing(
     model_name: str,
     batch_size: int = 1,
 ) -> dict:
-    """Run BEAR probing with lm-pub-quiz on all 96 relations.
+    """Run BEAR probing with lm-pub-quiz on all 60 relations.
 
     Uses the already-loaded model so no second load is needed.  Candidates are
     ranked by their summed pseudo-log-likelihood (PLL); the length-normalized

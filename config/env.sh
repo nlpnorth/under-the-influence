@@ -37,6 +37,15 @@
 # Raw parsed corpus pickles consumed by the linguistic filters.
 : "${COMMON_CORPUS_PICKLES:=$PROJECT_ROOT/data/pickles}"
 
+# ── Benchmarks ───────────────────────────────────────────────────────────────
+# Both probing benchmarks ship with the bundle (see data/README.md), so the
+# pipeline runs on nodes without network access.  lm-pub-quiz resolves
+# Dataset.from_name("BEAR") against $LM_PUB_QUIZ_CACHE_ROOT/datasets/ and
+# downloads only if that directory is missing.  BLiMP needs no variable: the
+# Python default already points at data/blimp/.
+: "${LM_PUB_QUIZ_CACHE_ROOT:=$BUNDLE_ROOT/data/lm-pub-quiz}"
+export LM_PUB_QUIZ_CACHE_ROOT
+
 # ── Outputs ──────────────────────────────────────────────────────────────────
 # Training workspace: raw_text/, tokenized_data/, models/, …
 : "${WORK_DIR:=$PROJECT_ROOT/artifacts/training}"

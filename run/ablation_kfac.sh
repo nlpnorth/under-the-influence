@@ -75,12 +75,14 @@ while [[ $# -gt 0 ]]; do
         --dampings)   DAMPINGS="$2";   shift 2 ;;
         --max-base)   MAX_BASE="$2";   shift 2 ;;
         --correlate)  CORRELATE=1;     shift ;;
+        --arch)       ARCH="$2"; shift 2 ;;
         --help|-h)    show_help "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "ERROR: unknown argument '$1'. See --help." >&2; exit 2 ;;
     esac
 done
 
 budget_config "$BUDGET"
+arch_config "$ARCH"
 ATTR_CONFIG="$BUNDLE_ROOT/config/attribution_linguistic.yaml"
 CHUNKS="$(resolve_chunks "$COMMON_CORPUS_ROOT")"
 FULL_MODEL="$(model_name "$CORPUS" "$BUDGET")"

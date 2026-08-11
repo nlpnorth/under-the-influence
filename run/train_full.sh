@@ -32,6 +32,7 @@
 # USAGE
 #   bash run/train_full.sh --corpus common_corpus --budget 5.6B
 #   bash run/train_full.sh --corpus wikipedia
+#   bash run/train_full.sh --corpus wikipedia --arch smollm2
 #   DRY_RUN=1 bash run/train_full.sh --corpus common_corpus --budget 68M
 #   sbatch      run/train_full.sh --corpus common_corpus --budget 5.6B
 # =============================================================================
@@ -45,6 +46,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --corpus)  CORPUS="$2"; shift 2 ;;
         --budget)  BUDGET="$2"; shift 2 ;;
+        --arch)   ARCH="$2"; shift 2 ;;
         --help|-h) show_help "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "ERROR: unknown argument '$1'. See --help." >&2; exit 2 ;;
     esac
@@ -65,11 +67,12 @@ case "$CORPUS" in
 esac
 
 budget_config "$BUDGET"
+arch_config "$ARCH"
 MODEL_NAME="$(model_name "$CORPUS" "$BUDGET")"
 CHUNKS="$(resolve_chunks "$CORPUS_ROOT")"
 RAW_TEXT="$WORK_DIR/raw_text/${MODEL_NAME}.txt"
 
-banner "Train FULL model — $CORPUS / $BUDGET tokens / GPT-2 $BUDGET_ARCH"
+banner "Train FULL model — $CORPUS / $BUDGET tokens / $ARCH $BUDGET_ARCH"
 echo "Model name : $MODEL_NAME"
 echo "Chunks     : $(echo "$CHUNKS" | wc -w)"
 echo "Seed       : $BUDGET_SEED"
@@ -77,8 +80,8 @@ echo "Batch      : $BUDGET_BATCH_SIZE ($BUDGET_BATCH_PER_DEVICE x $BUDGET_GRAD_A
 echo
 echo "Inputs:"
 check_input "corpus root"   "$CORPUS_ROOT"
-check_input "tokenizer"     "$TOKENIZER"
-check_input "model config"  "$BUDGET_MODEL_CONFIG"
+check_tokenizer
+check_input "model config"  "$ARCH_MODEL_CONFIG"
 check_input "training code" "$GOLDFISH_DIR/lm_code/run_transformer_language_modeling.py"
 echo
 echo "Output:"

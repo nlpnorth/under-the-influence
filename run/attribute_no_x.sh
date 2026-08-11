@@ -60,6 +60,7 @@ while [[ $# -gt 0 ]]; do
         --phenomenon)  PHENOMENON="$2";  shift 2 ;;
         --max-base)    MAX_BASE="$2";    shift 2 ;;
         --max-queries) MAX_QUERIES="$2"; shift 2 ;;
+        --arch)        ARCH="$2"; shift 2 ;;
         --help|-h)     show_help "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "ERROR: unknown argument '$1'. See --help." >&2; exit 2 ;;
     esac
@@ -73,6 +74,7 @@ if [[ "$PHENOMENON" == facts ]]; then
 fi
 phenomenon_config "$PHENOMENON"
 budget_config "$BUDGET"
+arch_config "$ARCH"
 
 FULL_MODEL="$(model_name "$CORPUS" "$BUDGET")"
 NO_X_MODEL="$(model_name "$CORPUS" "$BUDGET" "$PHENOMENON")"

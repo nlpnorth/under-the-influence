@@ -70,6 +70,7 @@ while [[ $# -gt 0 ]]; do
         --phenomenon) PHENOMENON="$2";     shift 2 ;;
         --model)      MODEL_OVERRIDE="$2"; shift 2 ;;
         --phenomena)  PHENOMENA="$2";      shift 2 ;;
+        --arch)       ARCH="$2"; shift 2 ;;
         --help|-h)    show_help "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "ERROR: unknown argument '$1'. See --help." >&2; exit 2 ;;
     esac
@@ -82,6 +83,7 @@ else
     [[ "$CORPUS" == wikipedia ]] && BUDGET="${BUDGET:-4.8B}"
     require_arg budget "$BUDGET"
     budget_config "$BUDGET"
+arch_config "$ARCH"
     MODEL_NAME="$(model_name "$CORPUS" "$BUDGET" "$PHENOMENON")"
     MODEL_PATH="$WORK_DIR/models/$MODEL_NAME"
 fi

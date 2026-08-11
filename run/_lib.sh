@@ -10,7 +10,12 @@ export BUNDLE_ROOT
 
 source "$BUNDLE_ROOT/config/env.sh"
 source "$BUNDLE_ROOT/config/budgets.sh"
+source "$BUNDLE_ROOT/config/architectures.sh"
 source "$BUNDLE_ROOT/config/phenomena.sh"
+
+# Model architecture, set by every run/ script's --arch flag (default gpt2).
+# It prefixes every model name, so architectures never overwrite each other.
+: "${ARCH:=gpt2}"
 
 export PYTHONUNBUFFERED=1
 export TQDM_MININTERVAL=60          # keep \r progress lines out of SLURM logs
@@ -42,6 +47,17 @@ check_input() {
         printf '  %-22s %s  [ok]\n' "$label" "$path"
     else
         printf '  %-22s %s  [MISSING]\n' "$label" "$path"
+    fi
+}
+
+# Like check_input, but for $ARCH_TOKENIZER: a hub-resolved tokenizer (e.g.
+# smollm2) is an identifier, not a local path, so an existence check on it
+# would always misreport [MISSING].
+check_tokenizer() {
+    if [[ "$ARCH_TOKENIZER_IS_LOCAL" == 1 ]]; then
+        check_input "tokenizer" "$ARCH_TOKENIZER"
+    else
+        printf '  %-22s %s  [hub]\n' "tokenizer" "$ARCH_TOKENIZER"
     fi
 }
 
@@ -78,12 +94,13 @@ banner() {
 model_name() {
     # model_name <corpus> <budget> [phenomenon]
     # Omitting the phenomenon names the full model f_θ; supplying one names the
-    # No-X model f_θ⁻ trained with that phenomenon's D_X removed.
+    # No-X model f_θ⁻ trained with that phenomenon's D_X removed.  The $ARCH
+    # prefix keeps two architectures trained on the same data apart.
     local corpus="$1" budget="$2" phenomenon="${3:-}"
     if [[ -z "$phenomenon" ]]; then
-        echo "${corpus}_${budget}_full"
+        echo "${ARCH}_${corpus}_${budget}_full"
     else
-        echo "${corpus}_${budget}_no_${phenomenon}"
+        echo "${ARCH}_${corpus}_${budget}_no_${phenomenon}"
     fi
 }
 
@@ -141,7 +158,9 @@ concat_corpus() {
     local out="$1" root="$2" chunks="$3" rel="$4"
 
     if [[ -s "$out" ]]; then
-        log "Corpus already assembled ($(wc -l < "$out") lines) → $out"
+        # Deliberately not `wc -l`: these files run to tens of GB, and counting
+        # their lines over network storage takes minutes for a log message.
+        log "Corpus already assembled ($(du -Lh "$out" | cut -f1)) → $out"
         return 0
     fi
     log "Assembling corpus → $out"
@@ -158,7 +177,7 @@ concat_corpus() {
     done
     is_dry && { echo "  [dry-run] would concatenate $(echo "$chunks" | wc -w) chunks of $rel"; return 0; }
     [[ $missing -gt 0 ]] && log "WARNING: $missing chunk(s) missing"
-    log "Corpus assembled: $(wc -l < "$out") lines"
+    log "Corpus assembled: $(du -Lh "$out" | cut -f1)"
 }
 
 # ── Training ─────────────────────────────────────────────────────────────────
@@ -188,7 +207,7 @@ train_model() {
     else
         log "Tokenizing → $tokenized"
         run_cmd "$GOLDFISH_PYTHON" "$GOLDFISH_DIR/tokenize_dataset.py" \
-            --tokenizer="$TOKENIZER" \
+            --tokenizer="$ARCH_TOKENIZER" \
             --input_file="$plain_text" \
             --output_file="$tokenized" \
             --max_segments=-1 --max_seq_len=512 --max_examples=-1
@@ -235,10 +254,13 @@ train_model() {
     fi
 
     log "Training $name ($BUDGET_ARCH, one epoch)"
-    run_cmd "$GOLDFISH_TORCHRUN" --nproc_per_node=1 \
+    # --standalone binds a fresh local rendezvous port per process instead of
+    # the torchrun default (29500), which collides when concurrent array
+    # tasks land on the same node.
+    run_cmd "$GOLDFISH_TORCHRUN" --standalone --nproc_per_node=1 \
         "$GOLDFISH_DIR/lm_code/run_transformer_language_modeling.py" \
-        --tokenizer_name="$TOKENIZER" \
-        --config_name="$BUDGET_MODEL_CONFIG" \
+        --tokenizer_name="$ARCH_TOKENIZER" \
+        --config_name="$ARCH_MODEL_CONFIG" \
         --do_train --train_iterable --eval_iterable \
         --train_data_file="$train_file" \
         --eval_data_file="$eval_file" \
@@ -257,8 +279,15 @@ train_model() {
         --output_dir="$out_dir"
 
     # The tokenizer travels with the checkpoint so downstream steps
-    # (probe_models.py, attribution) can load it with the model.
-    run_cmd cp "$TOKENIZER"/. "$out_dir"/ -r
+    # (probe_models.py, attribution) can load it alongside the model.  A local
+    # tokenizer directory is copied as-is; a hub-resolved one is materialised
+    # with save_pretrained.
+    if [[ "$ARCH_TOKENIZER_IS_LOCAL" == 1 ]]; then
+        run_cmd cp -r "$ARCH_TOKENIZER"/. "$out_dir"/
+    else
+        run_cmd "$GOLDFISH_PYTHON" -c \
+            "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained('$ARCH_TOKENIZER').save_pretrained('$out_dir')"
+    fi
     log "Training done → $out_dir"
 }
 

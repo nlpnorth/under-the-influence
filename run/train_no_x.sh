@@ -36,7 +36,8 @@
 #   bash run/train_no_x.sh --corpus wikipedia --phenomenon facts
 #   DRY_RUN=1 bash run/train_no_x.sh --corpus common_corpus --budget 68M --phenomenon npi
 #
-#   Phenomena: binding_reflexives | existential_there | wh_islands | npi | facts
+#   Phenomena:     binding_reflexives | existential_there | wh_islands | npi | facts
+#   Architectures: gpt2 (default) | smollm2
 # =============================================================================
 
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
@@ -50,6 +51,7 @@ while [[ $# -gt 0 ]]; do
         --corpus)     CORPUS="$2";     shift 2 ;;
         --budget)     BUDGET="$2";     shift 2 ;;
         --phenomenon) PHENOMENON="$2"; shift 2 ;;
+        --arch)       ARCH="$2"; shift 2 ;;
         --help|-h)    show_help "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "ERROR: unknown argument '$1'. See --help." >&2; exit 2 ;;
     esac
@@ -78,19 +80,20 @@ case "$CORPUS" in
 esac
 
 budget_config "$BUDGET"
+arch_config "$ARCH"
 MODEL_NAME="$(model_name "$CORPUS" "$BUDGET" "$PHENOMENON")"
 CHUNKS="$(resolve_chunks "$CORPUS_ROOT")"
 RAW_TEXT="$WORK_DIR/raw_text/${MODEL_NAME}.txt"
 
-banner "Train No-X model — $CORPUS / $BUDGET tokens / X = $PHENOMENON"
+banner "Train No-X model — $CORPUS / $BUDGET tokens / $ARCH $BUDGET_ARCH / X = $PHENOMENON"
 echo "Model name : $MODEL_NAME"
 echo "Chunks     : $(echo "$CHUNKS" | wc -w)"
 echo "Seed       : $BUDGET_SEED  (shared with the full model)"
 echo
 echo "Inputs:"
 check_input "filtered corpus"  "$CORPUS_ROOT"
-check_input "tokenizer"        "$TOKENIZER"
-check_input "model config"     "$BUDGET_MODEL_CONFIG"
+check_tokenizer
+check_input "model config"     "$ARCH_MODEL_CONFIG"
 echo
 echo "Output:"
 echo "  model                  $WORK_DIR/models/$MODEL_NAME"

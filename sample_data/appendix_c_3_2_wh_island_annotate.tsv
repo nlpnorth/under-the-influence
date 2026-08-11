@@ -1,0 +1,102 @@
+sample_id	label	extraction	flag	note	text
+wh-000	1	object	clean	what potential limitations ... might I encounter	"\""Additionally, what potential limitations or challenges might I encounter while attempting to use image stitching exclusively for x, y pose estimation without direct positional information?\"""
+wh-001	0		mangled	What is the ... -> wh pronoun	4.Whatistheannualcostofeachbuilding?
+wh-002	1	object	clean	What part of the sacred function can we touch	"\""What part of the sacred function can we touch which will not remind us of the beauty of holiness, the evil of sin, and the emptiness of all sublunary good ; or, where shall we not find ourselves in a temple resounding with awful voices, and filled with holy inspirations ?\"""
+wh-003	0		clean	What is ... -> pronoun	What is the structure of the trachea?
+wh-004	0		clean	How can you put -> adverbial how	How can you put a 4x4 bandage on just to hold the pressure on so the bleeding stops?
+wh-005	0		clean	How to deal -> infinitival	and 2) How to deal with the biases introduced by inaccurate and uncertain ground truth collected in real-life settings?
+wh-006	0		clean	pronoun	What is a convertible bond?
+wh-007	0		clean	What do you do -> pronoun	What do you do when these things reach there at the end of their useful life?
+wh-008	0		clean	adverbial how	So how can we verify that these protections give us sufficient protections from the real world attacks that we're actually going to see within our Kubernetes environment?
+wh-009	1	object	clean	What population must Washington attain	What population must Washington attain before it loses this discreditable distinction?
+wh-010	0		clean	adverbial how	How shall this convention take up the new effort at reconstruction?
+wh-011	1	object	clean	how many human lives did Spain sacrifice	And how many human lives did Spain sacrifice in christianizing America ?
+wh-012	0	subject	clean	which theory of heredity is borne out (subject Q)	"\""Now, which theory of heredity is borne out by human THE RACIAL EFFECTS OF DISEASE 259 experience of diseases?\"""
+wh-013	0		mangled	What is the number -> pronoun	Whatisthenumberofanimalsthathavebeenimported fromEasterncountriessincethebeginningoftheyear?
+wh-014	1	object	mangled	What conclusions has the Commission drawn	Whatconclusions hastheCommission drawnfromthis forfuturetriangulartransactions inthefieldoffoodaid?
+wh-015	1	object	pp	By what percentage has trade union membership declined	Socialpartners Bywhatpercentagehastradeunionmembershipdeclined orincreased : 1.ineachMemberState 2.intheEuropeanCommunityasawholeineachofthe last10years?
+wh-016	0		clean	pronoun	"\""Okay, so what is anonymisation?\"""
+wh-017	0	subject	mangled	What ecological criteria were applied	Whatecological criteriawereappliedinthechoiceof insulation ?
+wh-018	0		clean	pronoun	So what are the cognitive demands of foraging?
+wh-019	0		clean	pronoun	"\""What are the transportation facilities and rates, and the chances of alternative service during car shortages?\"""
+wh-020	0		clean	adverbial how	How then can the fact be explained that in common everyday life we take the causal relation of things as something objective and independent?
+wh-021	0		frag	garbled fragment	"\""Our civilization, which for two centuries has been engaged in a great strug- 44?\"""
+wh-022	0		clean	adverbial how	And how do we connect with it?
+wh-023	0		clean	adverbial how	How is delivery of the seairities effected ?
+wh-024	0		clean	adverbial how	How can they?
+wh-025	0		clean	What will happen -> pronoun subject	What will happen?
+wh-026	0		frag	How it Possible -> no aux	How it Possible?
+wh-027	0		clean	adverbial how	How can Foucault's Socrates become present in the present?
+wh-028	0		clean	adverbial how	How does itaffect pregnant women andfoetuses ?
+wh-029	0		clean	adverbial how	How can I implement liveness detection in my Android application using visual speech recognition without audio?
+wh-030	0		clean	what does ... show -> pronoun object	"\""How, what does the history of these States show?\"""
+wh-031	0		frag	What else	What else?
+wh-032	0		clean	adverbial how	"\""How do you see them in the architecture essential, useful or simply absolutely necessary?\"""
+wh-033	0		clean	What can we do -> pronoun	What can we do from here with the results that we have to improve this situation?
+wh-034	1	object	mangled	What action does the Commission intend taking	WhatactiondoestheCommissionintendtakingtoresolve thismattersothat—incommonwithanyotherECcitizen —MrBuschisentitledtopractisehisprofessioninthe Community ?
+wh-035	0		clean	pronoun subject	So what happens if a person somehow falls between the cracks of the world's countries?
+wh-036	0		mangled	What does ... intend to do -> pronoun	WhatdoestheCommission intendtodotodealwiththis hugeenvironmental riskinacoordinated andeffective manner ?
+wh-037	0	subject	clean	What pathologic conditions may be caused (subject Q)	What pathologic conditions may be caused by an im- pacted third molar?
+wh-038	0		clean	pronoun	And what was the McEnery resolution?
+wh-039	0		clean	pronoun	"\""What are the sources of this knowledge ?"
+wh-040	0		frag	what a schizont -> elliptical	"What is a sporoblast, what a schizont?"
+wh-041	0		frag	how about	But how about the low value placed upon human life?
+wh-042	1	object	mangled	What reasons does the Spanish Government give	WhatreasonsdoestheSpanishGovernmentgiveforits delayinincorporatingCouncilDirective90/425/EEC(') onagriculture?
+wh-043	0		clean	adverbial how	"How do we assemble data on both the institutional units and on the volunteer and individual behavior components, the workforce components?"
+wh-044	0	subject	mangled	How many microprojects have been carried out	"3.Howmanymicroprojects havebeencarriedout since1July1990,andwhatarethey?"
+wh-045	0		clean	pronoun	What are the Governor's powers in cases of extradition?
+wh-046	0		frag	How about ... -> fragment	I How about the California regional director of the DNC David Atkins Who suggested quote seriously?
+wh-047	0		clean	pronoun	"What is it, Uncle Fayton?"
+wh-048	0		clean	pronoun	What are the two divisions of the nervous system ?
+wh-049	0		clean	pronoun	"What, now, are the prerequisites for the erection or creation of a Pan-American confederation or union based upon such fundamental premises?"
+wh-050	0		clean	pronoun	What are the general principles governing the treatment of dislocation?
+wh-051	0		excl	What a rare opportunity -> exclamative	What a rare opportunity the president has given Hobson?
+wh-052	0		clean	pronoun	What does the ordinance of 1787 say?
+wh-053	0	subject	mangled	What EC-wide rules exist (subject Q)	1.WhatEC-wide rulesexistonconditions ofanimal transport ?
+wh-054	0		clean	adverbial how	How could those inferior provincial assemblies know the real wants of the state?
+wh-055	0		clean	adverbial how	How could such a consciousness submit itself to the yoke again without denying itself?
+wh-056	0		clean	pronoun	What does the Commission understand by objective criteria with which to assess the economically most advantageous tender?
+wh-057	0		clean	adverbial how	How can the state directly or indirectly influence these things?
+wh-058	0		clean	pronoun predicate	"What must have been the feelings of his traveling companion, the Rev. Mr. Alorse, of Syracuse, formerly of Boston?"
+wh-059	0		clean	pronoun	What are these two equations?
+wh-060	1	object	mangled	What plans has the Commission to protect	WhatplanshastheCommissiontoprotectchildrenfrom deathandinjurywhichresultfromhardsurfacesinplay areas?
+wh-061	1	object	clean	What real needs of theirs can he meet	What real needs of theirs can he meet ?
+wh-062	0		clean	pronoun	What do you think accounts for that?
+wh-063	0		frag	Which second level cache to select -> infinitival	Which second level cache to select for nHibernate?
+wh-064	0		clean	pronoun	So what exactly is this famous fundamental distinction?
+wh-065	0		clean	adverbial how	But how comes each whole to divide itself into parts?
+wh-066	0		clean	pronoun	What are the three evils originating from the evolution of the foreseeing mind?
+wh-067	0	subject	clean	How many holders of the purse escape (subject Q)	"How many holders of the purse escape being infected with the silent as sumption that those whom one supports\""\"" are dependents, inferiors, persons to be controlled by giving and withholding, or perchance favorites who are to be attached to oneself by lar gesses ?\"""
+wh-068	0		frag	So what size reduction -> verbless fragment	So what size reduction?
+wh-069	0		clean	pronoun	What is the Scottish Government doing to speed up the timescales for those critical projects in order to unlock billions of pounds of investment that will stimulate the economic growth that Scotland so desperately needs?
+wh-070	0		clean	pronoun subject	"\""What can have changed you so, William?\"""
+wh-071	0		clean	adverbial how	"\""How, then, can wages be expected ?\"""
+wh-072	1	object	pp	To what extent will import quotas ... result	3.TQwhatextentwillimportquotasandthe concomitantartificialshortageinMemberStateswhere bananaimportshavepreviouslybeensubjecttoaliberal regimeresultinariseinthepricechargedtothefinal consumerforthisproduct?
+wh-073	0		clean	pronoun	What were the conscious accompaniments of each of the above acts?
+wh-074	0		clean	pronoun	What are the characteristics of each type?
+wh-075	0		frag	How to get -> infinitival	How to get a Video Thumbnail using PowerShell on SharePoint SE version?
+wh-076	0	subject	mangled	What percentage of paper produced in the EC has	Whatpercentage ofpaperproduced intheEChasa maximumcontentofrecycledpaper?
+wh-077	0		mangled	How may they be represented -> adverbial	How maytheyberepresented?
+wh-078	0		frag	How their placement affects -> no inversion	How their placement affects their interactions and their security?
+wh-079	0		clean	pronoun	What is exactly a standalone instance?
+wh-080	0		frag	How to programatically trigger -> infinitival	How to programatically trigger a Liquibase migration?
+wh-081	0		clean	pronoun	What is your age?
+wh-082	0		clean	pronoun	What is their one and only object in life?
+wh-083	0		clean	What of knowledge -> partitive pronoun	What of knowledge is implicated in playing golf?
+wh-084	0		frag	How?	How?
+wh-085	0		clean	pronoun	What are the symptoms and treatment of a sprain?
+wh-086	1	object	mangled	What steps does the Commission intend to take	4.WhatstepsdoestheCommissionintendtotaketo remedythissituation?
+wh-087	0		clean	adverbial how	How will the Scottish Government listen to communities and balance their needs with those of the wider country?
+wh-088	1	object	mangled	What steps will the current presidency take	Whatstepswillthecurrentpresidencytaketocoordinate measurestocombatunemployment andpovertyinthe Community ?
+wh-089	0		clean	pronoun	What was the decision made by Supreme Court?
+wh-090	1	object	pp	of what service to the country could such a recovery be	of what service to the country could such a recovery be?
+wh-091	0		clean	embedded how	Will that be how they do business?
+wh-092	1	object	mangled	What representations will the Commission make	Whatrepresentations willtheCommission maketothe GreekCentralGovernment tospeedupprocedures for thedrawingupandimplementation oftheurban development plan?
+wh-093	0		clean	pronoun	What are spent transactions?
+wh-094	0		clean	adverbial how	How do I achieve the above objective?
+wh-095	0		clean	adverbial how	How can this original security profile be maintainedthroughout nested service invocations on distributed components?
+wh-096	0		clean	free relative what	So is what I am trying to achieve doing an antipattern to the Cadense?
+wh-097	1	object	pp	To what extent will NGOs be represented	2.Towhatextentwillnon-governmental environmental organizationsberepresentedinthesefora?
+wh-098	0		clean	pronoun	What is the teaching of biology regarding these principles of democracy?
+wh-099	0		clean	adverbial how	Specifically how would one search through the space of mappings?
+

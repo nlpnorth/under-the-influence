@@ -58,11 +58,19 @@ case "$CORPUS" in
         CORPUS_ROOT="$COMMON_CORPUS_ROOT"
         # train_full.txt is filter-independent — the unfiltered corpus is the
         # same file under every phenomenon's directory, so we read it from one.
-        CORPUS_FILE="Binding-reflexive/train_full.txt" ;;
+        CORPUS_FILE="Binding-reflexive/train_full.txt"
+        # So is test.txt: the pipeline draws the held-out split with a fixed
+        # seed before any filter runs, so every phenomenon directory holds a
+        # byte-identical copy.  It supplies the evaluation set.
+        HELD_OUT_ROOT="$COMMON_CORPUS_ROOT"
+        HELD_OUT_FILE="Binding-reflexive/test.txt" ;;
     wikipedia)
         BUDGET="${BUDGET:-4.8B}"
         CORPUS_ROOT="$WIKI_ROOT"
-        CORPUS_FILE="train_full.txt" ;;
+        CORPUS_FILE="train_full.txt"
+        # Wikipedia has no held-out split, so train_model falls back to
+        # carving the evaluation set off the training data.
+        HELD_OUT_ROOT=""; HELD_OUT_FILE="" ;;
     *) echo "ERROR: unknown corpus '$CORPUS'. Valid: common_corpus wikipedia" >&2; exit 2 ;;
 esac
 
@@ -91,6 +99,15 @@ echo
 make_dir "$SLURM_LOG_DIR"
 
 concat_corpus "$RAW_TEXT" "$CORPUS_ROOT" "$CHUNKS" "$CORPUS_FILE"
-train_model   "$MODEL_NAME" "$RAW_TEXT"
+
+# The held-out text is shared by every model trained on the same corpus and
+# budget, so it is named for those rather than for the model.
+HELD_OUT_TEXT=""
+if [[ -n "$HELD_OUT_ROOT" ]]; then
+    HELD_OUT_TEXT="$WORK_DIR/raw_text/${CORPUS}_${BUDGET}_heldout.txt"
+    concat_corpus "$HELD_OUT_TEXT" "$HELD_OUT_ROOT" "$CHUNKS" "$HELD_OUT_FILE"
+fi
+
+train_model   "$MODEL_NAME" "$RAW_TEXT" "$HELD_OUT_TEXT"
 
 log "Done. Next: bash run/evaluate.sh --corpus $CORPUS --budget $BUDGET"

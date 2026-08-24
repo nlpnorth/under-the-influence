@@ -183,23 +183,28 @@ concat_corpus() {
 # ── Training ─────────────────────────────────────────────────────────────────
 
 train_model() {
-    # train_model <model_name> <plain_text_file>
+    # train_model <model_name> <plain_text_file> [held_out_plain_text_file]
     #
-    # Tokenize → shuffle → hold out 2,000 sequences → train for one epoch.
+    # Tokenize → shuffle → pick an evaluation set → train for one epoch.
     # Each stage is idempotent, so an interrupted job can simply be resubmitted.
     #
-    # Sequence-level shuffling happens before the train/eval split and is done
-    # independently per model, so a full model and its No-X counterpart do not
-    # share an example ordering — the two runs should differ in their data, not
-    # in a coincidentally shared curriculum.
-    local name="$1" plain_text="$2"
+    # Sequence-level shuffling is done independently per model, so a full model
+    # and its No-X counterpart do not share an example ordering — the two runs
+    # should differ in their data, not in a coincidentally shared curriculum.
+    #
+    # The evaluation set comes from the held-out split the filter pipeline
+    # already sets aside (10% of the parsed corpus, never part of any training
+    # run) when the caller passes one.
+    # Wikipedia has no held-out split — setup_wikipedia_data.py writes only
+    # train_full.txt — so it falls back to that carve-out.
+    local name="$1" plain_text="$2" held_out_text="${3:-}"
     local out_dir="$WORK_DIR/models/$name"
     local tokenized="$WORK_DIR/tokenized_data/${name}.txt"
     local shuffled="$WORK_DIR/shuffled_tokenized_data/${name}.txt"
-    local train_file="$WORK_DIR/tokenized_data_split/${name}.txt"
-    local eval_file="$WORK_DIR/tokenized_data_split/${name}_eval2k.txt"
+    local eval_file="$WORK_DIR/tokenized_data_split/${name}_eval.txt"
+    local train_file
 
-    make_dir "$out_dir" "$(dirname "$tokenized")" "$(dirname "$shuffled")" "$(dirname "$train_file")"
+    make_dir "$out_dir" "$(dirname "$tokenized")" "$(dirname "$shuffled")" "$(dirname "$eval_file")"
 
     # --- Tokenize (max 512 tokens per sequence, both architectures) ---
     if [[ -f "$tokenized" ]]; then
@@ -221,22 +226,75 @@ train_model() {
         run_cmd shuf "$tokenized" -o "$shuffled"
     fi
 
-    # --- Split off a 2,000-sequence held-out set ---
-    if [[ -f "$train_file" ]]; then
-        log "Train/eval split exists, skipping."
-    elif is_dry; then
-        echo "  [dry-run] would split $shuffled into $train_file + $eval_file (2,000 held out)"
+    # --- Evaluation set ---
+    # EVAL_SEQUENCES caps the cost: the full held-out split runs to ~1.6M
+    # sequences.  The cap is applied to the raw text first.  
+    # Sentences are sampled
+    # rather than taken from the head, which would draw them all from the
+    # lowest-numbered chunk.
+    local eval_seqs="${EVAL_SEQUENCES:-2000}"
+
+    # A dry run reports the held-out path without requiring the file, which
+    # concat_corpus has not written yet at that point; a real run falls back
+    # only if the configured held-out text is genuinely missing, and says so.
+    if [[ -n "$held_out_text" ]] && ! is_dry && [[ ! -s "$held_out_text" ]]; then
+        log "WARNING: held-out text $held_out_text is missing or empty —"
+        log "         falling back to carving the eval set out of training data."
+        held_out_text=""
+    fi
+
+    if [[ -n "$held_out_text" ]]; then
+        # Train on the whole corpus; evaluate on data it never contained.
+        train_file="$shuffled"
+        local ho_sample="$WORK_DIR/raw_text/${name}_heldout_sample.txt"
+        local ho_tokenized="$WORK_DIR/tokenized_data/${name}_heldout.txt"
+        # 40 sentences per sequence: ~13x headroom over the 512-token sequence
+        # length at this corpus's ~39 tokens per sentence, so the sample still
+        # yields $eval_seqs sequences after packing.
+        local ho_sents=$((eval_seqs * 40))
+
+        if [[ -f "$eval_file" ]]; then
+            log "Eval set exists, skipping."
+        elif is_dry; then
+            echo "  [dry-run] would sample $ho_sents sentences from $held_out_text,"
+            echo "  [dry-run]   tokenize them, and keep $eval_seqs sequences → $eval_file"
+            echo "  [dry-run] train file is the full shuffled corpus: $train_file"
+        else
+            [[ -s "$ho_sample" ]] || shuf -n "$ho_sents" "$held_out_text" -o "$ho_sample"
+            [[ -s "$ho_tokenized" ]] || "$GOLDFISH_PYTHON" "$GOLDFISH_DIR/tokenize_dataset.py" \
+                --tokenizer="$ARCH_TOKENIZER" \
+                --input_file="$ho_sample" \
+                --output_file="$ho_tokenized" \
+                --max_segments=-1 --max_seq_len=512 --max_examples=-1
+            head -n "$eval_seqs" "$ho_tokenized" > "$eval_file"
+            log "Eval: $(wc -l < "$eval_file") sequences from the held-out split."
+        fi
     else
-        local total eval_lines=2000 train_lines
-        total=$(wc -l < "$shuffled")
-        train_lines=$((total - eval_lines))
-        head -n "$train_lines" "$shuffled" > "$train_file"
-        tail -n "$eval_lines"  "$shuffled" > "$eval_file"
-        log "Train: $train_lines sequences, Eval: $eval_lines sequences."
+        # No held-out split available (Wikipedia): carve the eval set off the
+        # end of the shuffled training data, as every earlier run did.
+        train_file="$WORK_DIR/tokenized_data_split/${name}.txt"
+        if [[ -f "$train_file" ]]; then
+            log "Train/eval split exists, skipping."
+        elif is_dry; then
+            echo "  [dry-run] no held-out split — would carve $eval_seqs sequences"
+            echo "  [dry-run]   off $shuffled into $train_file + $eval_file"
+        else
+            local total train_lines
+            total=$(wc -l < "$shuffled")
+            train_lines=$((total - eval_seqs))
+            head -n "$train_lines" "$shuffled" > "$train_file"
+            tail -n "$eval_seqs"   "$shuffled" > "$eval_file"
+            log "No held-out split — Train: $train_lines sequences, Eval: $eval_seqs sequences."
+        fi
     fi
 
     # --- Train ---
-    if [[ -f "$out_dir/config.json" ]]; then
+    # train_results.json is written only by trainer.save_metrics("train", ...)
+    # after trainer.train() returns. config.json is NOT a completion marker:
+    # the training script writes it (and the tokenizer files) to $out_dir at
+    # the START of a fresh run too, so a job that crashed mid-training leaves
+    # one behind — checking for it here would skip an incomplete model.
+    if [[ -f "$out_dir/train_results.json" ]]; then
         log "Model already trained at $out_dir, skipping."
         return 0
     fi
@@ -256,7 +314,9 @@ train_model() {
     log "Training $name ($BUDGET_ARCH, one epoch)"
     # --standalone binds a fresh local rendezvous port per process instead of
     # the torchrun default (29500), which collides when concurrent array
-    # tasks land on the same node.
+    # tasks land on the same node. dataloader_num_workers is 2, not 4: cn19
+    # warns 4 exceeds its suggested max, and concurrent array tasks training
+    # at once make that memory overhead worth avoiding.
     run_cmd "$GOLDFISH_TORCHRUN" --standalone --nproc_per_node=1 \
         "$GOLDFISH_DIR/lm_code/run_transformer_language_modeling.py" \
         --tokenizer_name="$ARCH_TOKENIZER" \
@@ -267,7 +327,7 @@ train_model() {
         --per_device_train_batch_size="$BUDGET_BATCH_PER_DEVICE" \
         --gradient_accumulation_steps="$BUDGET_GRAD_ACCUM" \
         --per_device_eval_batch_size=64 \
-        --dataloader_num_workers=4 \
+        --dataloader_num_workers=2 \
         --evaluation_strategy=steps --save_strategy=steps \
         --eval_steps="$eval_steps" --save_steps="$eval_steps" \
         --max_steps="$max_steps" \

@@ -67,6 +67,14 @@ case "$CORPUS" in
         else
             CORPUS_ROOT="$COMMON_CORPUS_ROOT";   CORPUS_FILE="$PHENOMENON_FILTER_DIR/train_clean.txt"
         fi
+        # The held-out split lives under the linguistic filter output for both
+        # phenomena, since the facts filter reads the already-split
+        # train_full.txt and so writes no test.txt of its own.  It is drawn
+        # with a fixed seed before any filter runs, so it is identical under
+        # every phenomenon directory and is unfiltered — the No-X model is
+        # evaluated on the same held-out text as its full counterpart.
+        HELD_OUT_ROOT="$COMMON_CORPUS_ROOT"
+        HELD_OUT_FILE="Binding-reflexive/test.txt"
         require_arg budget "$BUDGET" ;;
     wikipedia)
         if [[ "$PHENOMENON" != facts ]]; then
@@ -75,7 +83,9 @@ case "$CORPUS" in
             exit 2
         fi
         BUDGET="${BUDGET:-4.8B}"
-        CORPUS_ROOT="$BEAR_FILTER_ROOT"; CORPUS_FILE="BearFacts/train_clean.txt" ;;
+        CORPUS_ROOT="$BEAR_FILTER_ROOT"; CORPUS_FILE="BearFacts/train_clean.txt"
+        # Wikipedia has no held-out split; train_model carves one instead.
+        HELD_OUT_ROOT=""; HELD_OUT_FILE="" ;;
     *) echo "ERROR: unknown corpus '$CORPUS'. Valid: common_corpus wikipedia" >&2; exit 2 ;;
 esac
 
@@ -102,6 +112,14 @@ echo
 make_dir "$SLURM_LOG_DIR"
 
 concat_corpus "$RAW_TEXT" "$CORPUS_ROOT" "$CHUNKS" "$CORPUS_FILE"
-train_model   "$MODEL_NAME" "$RAW_TEXT"
+
+# Shared with the full model of the same corpus and budget, hence the name.
+HELD_OUT_TEXT=""
+if [[ -n "$HELD_OUT_ROOT" ]]; then
+    HELD_OUT_TEXT="$WORK_DIR/raw_text/${CORPUS}_${BUDGET}_heldout.txt"
+    concat_corpus "$HELD_OUT_TEXT" "$HELD_OUT_ROOT" "$CHUNKS" "$HELD_OUT_FILE"
+fi
+
+train_model   "$MODEL_NAME" "$RAW_TEXT" "$HELD_OUT_TEXT"
 
 log "Done. Next: bash run/evaluate.sh --corpus $CORPUS --budget $BUDGET --phenomenon $PHENOMENON"

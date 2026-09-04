@@ -40,7 +40,15 @@
 #   Architectures: gpt2 (default) | smollm2
 # =============================================================================
 
-source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Locate _lib.sh.  Under sbatch the script runs from a COPY in the SLURM spool
+# directory, so a path relative to BASH_SOURCE does not lead back to the bundle;
+# $SLURM_SUBMIT_DIR does, sbatch having been invoked from the bundle root.  The
+# explicit check matters because `set -euo pipefail` lives inside _lib.sh: a
+# failed source would otherwise carry on and die later on a missing function.
+_IOW_LIB="$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || _IOW_LIB="${SLURM_SUBMIT_DIR:-.}/run/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || { echo "ERROR: cannot find run/_lib.sh — submit from the bundle root." >&2; exit 2; }
+source "$_IOW_LIB"
 
 CORPUS=common_corpus
 BUDGET=""
@@ -63,7 +71,7 @@ phenomenon_config "$PHENOMENON"
 case "$CORPUS" in
     common_corpus)
         if [[ "$PHENOMENON" == facts ]]; then
-            CORPUS_ROOT="$BEAR_FILTER_ROOT"; CORPUS_FILE="BearFacts/train_clean.txt"
+            CORPUS_ROOT="$(bear_filter_root "$CORPUS")"; CORPUS_FILE="BearFacts/train_clean.txt"
         else
             CORPUS_ROOT="$COMMON_CORPUS_ROOT";   CORPUS_FILE="$PHENOMENON_FILTER_DIR/train_clean.txt"
         fi
@@ -83,7 +91,7 @@ case "$CORPUS" in
             exit 2
         fi
         BUDGET="${BUDGET:-4.8B}"
-        CORPUS_ROOT="$BEAR_FILTER_ROOT"; CORPUS_FILE="BearFacts/train_clean.txt"
+        CORPUS_ROOT="$(bear_filter_root "$CORPUS")"; CORPUS_FILE="BearFacts/train_clean.txt"
         # Wikipedia has no held-out split; train_model carves one instead.
         HELD_OUT_ROOT=""; HELD_OUT_FILE="" ;;
     *) echo "ERROR: unknown corpus '$CORPUS'. Valid: common_corpus wikipedia" >&2; exit 2 ;;

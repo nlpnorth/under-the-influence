@@ -21,9 +21,9 @@ attribution:
   projection_dim: 64            # two-sided 64x64 Rademacher sketch per weight module
   use_optimizer_state: false    # GradSim: no Adam second-moment normalization
   trackstar_downweight_components: 1000   # TrackStar: query-dominant directions suppressed
-  token_batch_size: 32768
+  token_batch_size: 8192
   max_batch_size: 256           # cap docs/batch: many short sentences can OOM under the token budget alone
-  trackstar_score_token_batch_size: 16384  # scoring does more per-example GPU work than collection
+  trackstar_score_token_batch_size: 4096   # scoring does more per-example GPU work than collection
   use_tf32_matmuls: true
 
   # ── (E)K-FAC ──────────────────────────────────────────────────────────────

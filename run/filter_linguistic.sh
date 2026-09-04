@@ -4,6 +4,10 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=0-06:00:00
 #SBATCH --array=0-55
+# ^ the 56 chunks of the corpus this project first ran on.  A corpus built by
+#   run/prepare_corpus.sh has as many chunks as its manifest says (82 at the
+#   default target), so pass --array explicitly; the script refuses to run a
+#   short array rather than filter half the corpus.  See USAGE below.
 # =============================================================================
 # Step 1 (a) — isolate X in the training data, for the four linguistic phenomena.
 #
@@ -17,10 +21,13 @@
 # InterrogativeWhModifierFilter and NukeNPI.
 #
 # PREREQUISITE
-#   The corpus must already be sentence-segmented (NLTK sent_tokenize) and
-#   dependency-parsed.  The parses come from MaChAmp v0.4.2 trained on the
-#   multi-domain GUM corpus with deberta-v3-large as backbone; the parsed
-#   chunks are pickles at $COMMON_CORPUS_PICKLES/chunk_XX.pkl.
+#   run/prepare_corpus.sh, which deduplicates the released parse and cuts it
+#   into $COMMON_CORPUS_CHUNKS/chunk_XX.conllu.  The parse itself comes from
+#   MaChAmp v0.4.2 trained on the multi-domain GUM corpus with deberta-v3-large
+#   as backbone, over the sentence-segmented (NLTK sent_tokenize) corpus; it is
+#   released rather than recomputed, see README §Data.
+#   Chunks that predate run/prepare_corpus.sh exist as pickles at
+#   $COMMON_CORPUS_PICKLES/chunk_XX.pkl and are still read if no .conllu is there.
 #
 # WHAT IT WRITES  (per chunk, per phenomenon, under $COMMON_CORPUS_ROOT/chunk_XX/)
 #   <Phenomenon>/train_full.txt      the unfiltered corpus     → run/train_full.sh
@@ -34,12 +41,21 @@
 #   correct retrieval is then scored as a miss.
 #
 # USAGE
-#   sbatch run/filter_linguistic.sh                  # all 56 chunks as a job array
+#   sbatch --array=0-81 run/filter_linguistic.sh     # a corpus of 82 chunks
+#   sbatch run/filter_linguistic.sh                  # the legacy 56-chunk corpus
 #   bash   run/filter_linguistic.sh --chunk 00       # one chunk, locally
 #   DRY_RUN=1 bash run/filter_linguistic.sh --chunk 00
 # =============================================================================
 
-source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Locate _lib.sh.  Under sbatch the script runs from a COPY in the SLURM spool
+# directory, so a path relative to BASH_SOURCE does not lead back to the bundle;
+# $SLURM_SUBMIT_DIR does, sbatch having been invoked from the bundle root.  The
+# explicit check matters because `set -euo pipefail` lives inside _lib.sh: a
+# failed source would otherwise carry on and die later on a missing function.
+_IOW_LIB="$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || _IOW_LIB="${SLURM_SUBMIT_DIR:-.}/run/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || { echo "ERROR: cannot find run/_lib.sh — submit from the bundle root." >&2; exit 2; }
+source "$_IOW_LIB"
 
 CHUNK=""
 while [[ $# -gt 0 ]]; do
@@ -55,8 +71,17 @@ if [[ -z "$CHUNK" && -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     CHUNK=$(printf "%02d" "$SLURM_ARRAY_TASK_ID")
 fi
 require_arg chunk "$CHUNK"
+require_array_covers_corpus
 
-INPUT="$COMMON_CORPUS_PICKLES/chunk_${CHUNK}.pkl"
+# Prefer the CoNLL-U chunk written by run/prepare_corpus.sh, falling back to the
+# pickle for chunks that predate it.  The two give identical output: the filter
+# pipeline draws its train/test split with the same Random(seed) over the same
+# sentence order either way (vendor/corpus_filtering/…/pipeline.py).  The
+# .conllu path streams instead of loading the whole chunk into memory.
+INPUT="$COMMON_CORPUS_CHUNKS/chunk_${CHUNK}.conllu"
+if [[ ! -f "$INPUT" ]]; then
+    INPUT="$COMMON_CORPUS_PICKLES/chunk_${CHUNK}.pkl"
+fi
 OUTPUT="$COMMON_CORPUS_ROOT/chunk_${CHUNK}/"
 
 banner "Linguistic corpus filter — chunk_${CHUNK}"

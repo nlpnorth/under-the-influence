@@ -106,9 +106,25 @@ model_name() {
 
 model_path() { echo "$WORK_DIR/models/$(model_name "$@")"; }
 
+bear_filter_root() {
+    # bear_filter_root <corpus>
+    # The BEAR filter output depends on the architecture (which facts the full
+    # model already answers) AND on the corpus, so the two corpora cannot share
+    # one directory: filter_facts.sh skips a chunk whose done-marker exists, so
+    # whichever corpus ran second silently inherited the first one's chunks.
+    # $BEAR_FILTER_ROOT names the common_corpus tree; Wikipedia gets a sibling.
+    case "$1" in
+        wikipedia) echo "${BEAR_FILTER_ROOT}_wikipedia" ;;
+        *)         echo "$BEAR_FILTER_ROOT" ;;
+    esac
+}
+
 experiment_name() {
     # experiment_name <corpus> <budget> <phenomenon> <max_base>
-    echo "attr_${1}_${2}_${3}_base${4}"
+    # $ARCH-prefixed like model_name(), so a gpt2 and a smollm2 run at the same
+    # corpus/budget/phenomenon/max_base don't land in the same ATTRIBUTION_DIR
+    # entry and overwrite each other's results.
+    echo "attr_${ARCH}_${1}_${2}_${3}_base${4}"
 }
 
 # ── Scratch ──────────────────────────────────────────────────────────────────
@@ -357,6 +373,39 @@ require_arg() {
     local name="$1" value="$2"
     if [[ -z "$value" ]]; then
         echo "ERROR: --${name} is required. See --help." >&2
+        exit 2
+    fi
+}
+
+# ── Job arrays over corpus chunks ────────────────────────────────────────────
+# SLURM parses #SBATCH --array at submit time, so a script cannot size its own
+# array from the corpus it is about to read.  The #SBATCH line therefore carries
+# the 56 chunks the original corpus had, and these two helpers keep a corpus of
+# a different size from being silently truncated to it.
+
+# Number of chunks in the corpus run/prepare_corpus.sh built.  Empty when there
+# is no manifest, which is the pre-release layout: chunk count is then whatever
+# the pickle directory happens to hold and there is nothing to check against.
+manifest_chunk_count() {
+    local manifest="${COMMON_CORPUS_CHUNKS:-}/manifest.json"
+    [[ -f "$manifest" ]] || return 0
+    local py="${VENV_PYTHON:-}"
+    [[ -x "$py" ]] || py="$(command -v python3 || true)"
+    [[ -n "$py" ]] || return 0
+    "$py" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["chunks"]))' \
+        "$manifest" 2>/dev/null || true
+}
+
+# Abort when the running job array is too small for the corpus.  Half a filtered
+# corpus is worse than none: every downstream step would train and attribute on
+# it without noticing, so this fails loudly and prints the array to submit.
+require_array_covers_corpus() {
+    local n; n="$(manifest_chunk_count)"
+    [[ -n "$n" && -n "${SLURM_ARRAY_TASK_MAX:-}" ]] || return 0
+    if (( SLURM_ARRAY_TASK_MAX < n - 1 )); then
+        echo "ERROR: job array covers chunks 0-$SLURM_ARRAY_TASK_MAX, but" >&2
+        echo "       $COMMON_CORPUS_CHUNKS/manifest.json holds $n chunks." >&2
+        echo "       Resubmit with:  sbatch --array=0-$((n - 1)) ${BASH_SOURCE[1]:-run/<script>.sh}" >&2
         exit 2
     fi
 }

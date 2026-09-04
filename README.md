@@ -53,14 +53,14 @@ Every value can also be overridden from the environment without editing:
 PROJECT_ROOT=/my/workspace bash run/train_full.sh --corpus common_corpus --budget 68M
 ```
 
-**Two environments are needed.** The Goldfish training script targets
+The Goldfish training script targets
 `transformers` 4.35, older than the attribution stack requires, so it runs from
 its own interpreter. Point `GOLDFISH_PYTHON` and `GOLDFISH_TORCHRUN` in
 `config/env.sh` at an environment built from
 `vendor/goldfish/lm_code/`'s requirements. Only `run/train_*.sh` use it;
 everything else uses `.venv`.
 
-**Check before you launch.** Every `run/` script accepts `DRY_RUN=1`, which
+ Every `run/` script accepts `DRY_RUN=1`, which
 resolves and prints all input paths (flagging any that are missing), prints
 every command it would execute, and exits without writing anything:
 
@@ -78,8 +78,13 @@ Naming: **budgets** are `68M`, `130M`, `1.3B`, `5.6B` (Common Corpus) and
 ### Linguistic setting
 
 ```bash
+# Step 0 — deduplicate the released parse and cut it into chunks (once, for
+#          both settings; ~5.5 h, writes chunk_XX.conllu + manifest.json)
+sbatch run/prepare_corpus.sh
+
 # Step 1 — filter (job array over corpus chunks; one pass does all four phenomena)
-sbatch run/filter_linguistic.sh
+#          Size --array from manifest.json: 82 chunks at the default target.
+sbatch --array=0-81 run/filter_linguistic.sh
 
 # Step 2 — one full model per budget, four No-X models per budget
 sbatch run/train_full.sh --corpus common_corpus --budget 5.6B
@@ -160,28 +165,22 @@ time, and `data/README.md` records source, revision and license for each:
   `Dataset.from_name("BEAR")` resolves to it. Export that variable yourself if
   you call a module outside `run/`, or let the package download its own copy.
 
-Neither corpus is redistributed here.
+### Common Corpus
 
-- **Common Corpus** (English subset) — a collection of uncopyrighted and
-  permissively licensed text from public sources.
-- **English Wikipedia** (2023-11-01 dump, CC-BY-SA) —
-  `data/prepare/setup_wikipedia_data.py` downloads and segments it into the
-  `chunk_XX/train_full.txt` layout the pipeline expects. Run it locally and
-  transfer the result; see the script header.
+The pipeline starts the sentence-segmented,
+dependency-parsed English Common Corpus subset, as a single `cc-en-10b.conllu.gz`.
+Point `$COMMON_CORPUS_PARSED` at it and run `run/prepare_corpus.sh`; everything
+downstream follows from there.
 
-Corpora must be sentence-segmented (NLTK `sent_tokenize`) and laid out as
-`chunk_XX/train_full.txt`, one sentence per line, before anything else runs.
-Set `$COMMON_CORPUS_ROOT` and `$WIKI_ROOT` in `config/env.sh` to point at them.
+Parsing is not reproduced by this code, it is by far the most
+expensive step. See the paper for parsing procedure. `run/prepare_corpus.sh` then deduplicates that parse.
 
-The linguistic filters additionally need dependency parses of the Common Corpus
-chunks, as CoNLL-U pickles at `$COMMON_CORPUS_PICKLES/chunk_XX.pkl`. Ours come from
-MaChAmp v0.4.2 with default hyperparameters, trained on the multi-domain GUM
-corpus as a single multi-task model (word segmentation, UPOS, XPOS,
-lemmatization, morphological labelling, dependency parsing). We trained four
-parsers, on `deberta-v3-large`, `luke-large`, `roberta-large` and
-`ModernBERT-large`, and picked the deberta one after manually inspecting 20
-sentences on which at least two of them produced different dependency
-structures.
+
+### English Wikipedia
+
+The 2023-11-01 dump (CC-BY-SA). `data/prepare/setup_wikipedia_data.py` downloads
+and segments it into the `chunk_XX/train_full.txt` layout the pipeline expects,
+one sentence per line; run it locally, transfer the result, and set `$WIKI_ROOT`.
 
 Also included in `data/`:
 

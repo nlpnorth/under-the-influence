@@ -3,8 +3,8 @@
 #SBATCH --output=/home/jgsi/slurm_outputs/babylm_ifs/%j_iow_smollm2_attribute.out
 #SBATCH --gres=gpu:1
 #SBATCH --partition=NLPNorth
-#SBATCH --exclude=cn19
-#SBATCH --mem=80G
+#SBATCH --nodelist=cn11
+#SBATCH --mem=200G
 #SBATCH --time=4-00:00:00
 #SBATCH --mail-type=END,FAIL
 # =============================================================================
@@ -13,9 +13,7 @@
 # site_smollm2_sweep.slurm does for training. Generic over which attribution
 # script and phenomenon to run, since there's one job per (corpus, phenomenon)
 # rather than a fixed task list.
-#
-# cn19 is excluded: a training job may still be running there, and a second
-# concurrent job on that node has twice caused it to crash mid-training.
+
 #
 # Usage:
 #   sbatch site_smollm2_attribute.slurm run/attribute_full.sh \
@@ -24,6 +22,10 @@
 
 set -euo pipefail
 exec 2>&1
+
+# Reduce CUDA allocator fragmentation on long streaming gradient-collection
+# loops, as goldfish_attribute.slurm does. 
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 BUNDLE=/home/jgsi/InfluenceOnWhat
 set -a; source "$BUNDLE/site.env"; set +a

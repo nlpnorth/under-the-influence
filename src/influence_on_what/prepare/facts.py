@@ -714,7 +714,7 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    from src.config import ExperimentCfg
+    from ..config import ExperimentCfg
 
     cfg = ExperimentCfg.loads_yaml(Path(args.config).read_text())
     cfg.name = args.name

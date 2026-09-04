@@ -55,7 +55,15 @@
 # plus BEAR).  Restrict with --phenomena, e.g. --phenomena "quantifiers".
 # =============================================================================
 
-source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Locate _lib.sh.  Under sbatch the script runs from a COPY in the SLURM spool
+# directory, so a path relative to BASH_SOURCE does not lead back to the bundle;
+# $SLURM_SUBMIT_DIR does, sbatch having been invoked from the bundle root.  The
+# explicit check matters because `set -euo pipefail` lives inside _lib.sh: a
+# failed source would otherwise carry on and die later on a missing function.
+_IOW_LIB="$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || _IOW_LIB="${SLURM_SUBMIT_DIR:-.}/run/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || { echo "ERROR: cannot find run/_lib.sh — submit from the bundle root." >&2; exit 2; }
+source "$_IOW_LIB"
 
 CORPUS=common_corpus
 BUDGET=""

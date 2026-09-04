@@ -4,6 +4,9 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=0-04:00:00
 #SBATCH --array=0-55
+# ^ see the note on the same line in run/filter_linguistic.sh: this covers the
+#   56 chunks of the original corpus, and a corpus built by run/prepare_corpus.sh
+#   needs --array sized from its manifest.
 # =============================================================================
 # Step 1 (b) — isolate X in the training data, for the factual setting.
 #
@@ -59,7 +62,15 @@
 #   DRY_RUN=1 bash run/filter_facts.sh --corpus common_corpus --chunk 00
 # =============================================================================
 
-source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Locate _lib.sh.  Under sbatch the script runs from a COPY in the SLURM spool
+# directory, so a path relative to BASH_SOURCE does not lead back to the bundle;
+# $SLURM_SUBMIT_DIR does, sbatch having been invoked from the bundle root.  The
+# explicit check matters because `set -euo pipefail` lives inside _lib.sh: a
+# failed source would otherwise carry on and die later on a missing function.
+_IOW_LIB="$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || _IOW_LIB="${SLURM_SUBMIT_DIR:-.}/run/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || { echo "ERROR: cannot find run/_lib.sh — submit from the bundle root." >&2; exit 2; }
+source "$_IOW_LIB"
 
 CORPUS=common_corpus
 CHUNK=""
@@ -136,9 +147,15 @@ if [[ -z "$CHUNK" && -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     CHUNK=$(printf "%02d" "$SLURM_ARRAY_TASK_ID")
 fi
 require_arg chunk "$CHUNK"
+# Only Common Corpus chunks come from the manifest; the Wikipedia corpus is a
+# fixed dump with its own chunk count and nothing to check against.  An `if`
+# rather than `&&`: under `set -e` a false `&&` would abort the script.
+if [[ "$CORPUS" == common_corpus ]]; then
+    require_array_covers_corpus
+fi
 
 INPUT="$SOURCE_ROOT/chunk_${CHUNK}/${SOURCE_FILE}"
-OUTPUT="$BEAR_FILTER_ROOT/chunk_${CHUNK}/"
+OUTPUT="$(bear_filter_root "$CORPUS")/chunk_${CHUNK}/"
 DONE_MARKER="$OUTPUT/BearFacts/stats.json"
 
 banner "BEAR facts filter — $CORPUS / chunk_${CHUNK}"

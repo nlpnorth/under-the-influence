@@ -34,7 +34,21 @@
 #   $BEAR_FILTER_ROOT/chunk_XX/BearFacts/facts/<fact_slug>/{cooccurrence,subj_occurrence,obj_occurrence}/
 : "${BEAR_FILTER_ROOT:=$PROJECT_ROOT/data/bear_facts_filter_output}"
 
-# Raw parsed corpus pickles consumed by the linguistic filters.
+# The released CoNLL-U parse of Common Corpus — the corpus artifact the
+# pipeline starts from, before deduplication.  Either one .conllu.gz or a
+# directory of shards.  Consumed by run/prepare_corpus.sh.
+: "${COMMON_CORPUS_PARSED:=$PROJECT_ROOT/data/cc-en-10b.conllu.gz}"
+
+# Deduplicated, chunked corpus written by run/prepare_corpus.sh:
+#   $COMMON_CORPUS_CHUNKS/chunk_XX.conllu, plus manifest.json
+: "${COMMON_CORPUS_CHUNKS:=$PROJECT_ROOT/data/chunks}"
+
+# Parsed corpus pickles, the older form of the same thing.  Kept because the
+# chunks already on the cluster exist only as pickles; run/filter_linguistic.sh
+# falls back to them when no chunk_XX.conllu is present.  New runs should not
+# produce these: a pickled chunk costs ~2.4x the CoNLL-U it came from and has to
+# be loaded whole (a 14 GB chunk OOM-killed a 128 GB job), while the filter
+# reads the .conllu as a stream and splits it identically.
 : "${COMMON_CORPUS_PICKLES:=$PROJECT_ROOT/data/pickles}"
 
 # ── Benchmarks ───────────────────────────────────────────────────────────────
@@ -53,6 +67,8 @@ export LM_PUB_QUIZ_CACHE_ROOT
 : "${PROBE_DIR:=$PROJECT_ROOT/artifacts/probe}"
 # Step-3 attribution artifacts (delta_I_stats.npz, prec_at_k.json, …).
 : "${ATTRIBUTION_DIR:=$PROJECT_ROOT/artifacts/attribution}"
+# Corpus provenance statistics (run/corpus_stats.sh), one JSON per --source.
+: "${CORPUS_STATS_DIR:=$PROJECT_ROOT/artifacts/corpus_stats}"
 # SLURM stdout/stderr.
 : "${SLURM_LOG_DIR:=$PROJECT_ROOT/slurm_outputs}"
 

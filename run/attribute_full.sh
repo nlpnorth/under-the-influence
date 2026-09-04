@@ -51,7 +51,15 @@
 #   Methods: gradsim | trackstar | kfac | bm25   (comma-separated; default all four)
 # =============================================================================
 
-source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Locate _lib.sh.  Under sbatch the script runs from a COPY in the SLURM spool
+# directory, so a path relative to BASH_SOURCE does not lead back to the bundle;
+# $SLURM_SUBMIT_DIR does, sbatch having been invoked from the bundle root.  The
+# explicit check matters because `set -euo pipefail` lives inside _lib.sh: a
+# failed source would otherwise carry on and die later on a missing function.
+_IOW_LIB="$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || _IOW_LIB="${SLURM_SUBMIT_DIR:-.}/run/_lib.sh"
+[[ -f "$_IOW_LIB" ]] || { echo "ERROR: cannot find run/_lib.sh — submit from the bundle root." >&2; exit 2; }
+source "$_IOW_LIB"
 
 CORPUS=common_corpus
 BUDGET=""
@@ -88,7 +96,15 @@ EXP_NAME="$(experiment_name "$CORPUS" "$BUDGET" "$PHENOMENON" "$MAX_BASE")"
 
 if [[ "$PHENOMENON" == facts ]]; then
     ATTR_CONFIG="$BUNDLE_ROOT/config/attribution_facts.yaml"
-    CORPUS_ROOT="$BEAR_FILTER_ROOT"
+    CORPUS_ROOT="$(bear_filter_root "$CORPUS")"
+    # Entity co-occurrence counts are per corpus, and the two stats files are
+    # keyed by different datasets ('50m'/'100m'/… vs 'wikipedia'), so they are
+    # not interchangeable: the corpus-supported fact set differs between them.
+    if [[ "$CORPUS" == wikipedia ]]; then
+        BEAR_CORPUS_STATS="$BUNDLE_ROOT/data/bear_corpus_stats_wikipedia.json"
+    else
+        BEAR_CORPUS_STATS="$BUNDLE_ROOT/data/bear_corpus_stats.json"
+    fi
 else
     ATTR_CONFIG="$BUNDLE_ROOT/config/attribution_linguistic.yaml"
     CORPUS_ROOT="$COMMON_CORPUS_ROOT"
@@ -125,6 +141,41 @@ setup_scratch
 is_dry || trap sync_and_cleanup EXIT
 make_dir "$SLURM_LOG_DIR" "$PROBE_DIR"
 
+# ── 0. BEAR per-template labels (facts only) ─────────────────────────────────
+# prepare.facts decides which facts count as learned from the per-(fact,
+# template) parquet probe_models.py writes with --bear-pairs-output; the
+# aggregated results JSON collapses templates and cannot supply it.  Unlike the
+# labels in §2 this has to run BEFORE the prepare step, which consumes it.
+# Cached on durable storage the same way; FORCE_REEVAL=1 recomputes.
+bear_pairs_args=()
+if [[ "$PHENOMENON" == facts ]]; then
+    for role in full no_x; do
+        if [[ "$role" == full ]]; then m_name="$FULL_MODEL"; m_path="$FULL_MODEL_PATH"
+        else                          m_name="$NO_X_MODEL";  m_path="$NO_X_MODEL_PATH"; fi
+
+        if [[ "$role" == no_x && ! -d "$m_path" ]]; then
+            log "WARNING: No-X model missing at $m_path — proceeding without its BEAR"
+            log "         labels; prepare.facts cannot fill filtered_fact_learned."
+            continue
+        fi
+
+        bear_out="$PROBE_DIR/$m_name/bear_pairs.parquet"
+        if [[ "$FORCE_REEVAL" != "1" && -f "$bear_out" ]]; then
+            log "BEAR per-template labels ($role): cached → $bear_out"
+        else
+            log "Scoring BEAR facts ($role)"
+            make_dir "$(dirname "$bear_out")"
+            run_cmd "$VENV_PYTHON" -m influence_on_what.probe_models \
+                --model "$m_path" \
+                --phenomena "$PHENOMENON_PROBE_KEY" \
+                --bear-pairs-output "$bear_out"
+        fi
+
+        if [[ "$role" == full ]]; then bear_pairs_args+=(--bear-pairs "$bear_out")
+        else                          bear_pairs_args+=(--nbf-bear-pairs "$bear_out"); fi
+    done
+fi
+
 # ── 1. Prepare queries + training data ───────────────────────────────────────
 log "Preparing datasets"
 if [[ "$PHENOMENON" == facts ]]; then
@@ -132,11 +183,12 @@ if [[ "$PHENOMENON" == facts ]]; then
         --config "$ATTR_CONFIG" \
         --name "$EXP_NAME" \
         --model-path "$FULL_MODEL_PATH" \
-        --bear-facts-dir "$BEAR_FILTER_ROOT" \
+        --bear-facts-dir "$CORPUS_ROOT" \
         --chunks $CHUNKS \
-        --corpus-stats "$BUNDLE_ROOT/data/bear_corpus_stats.json" \
+        --corpus-stats "$BEAR_CORPUS_STATS" \
         --alias-cache "$BUNDLE_ROOT/data/wikidata_alias_cache.json" \
         --max-base "$MAX_BASE" \
+        ${bear_pairs_args[@]+"${bear_pairs_args[@]}"} \
         --artifacts-dir "$SCRATCH_DIR"
 else
     run_cmd "$VENV_PYTHON" -m influence_on_what.prepare.linguistic \

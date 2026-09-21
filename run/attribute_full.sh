@@ -100,10 +100,16 @@ if [[ "$PHENOMENON" == facts ]]; then
     # Entity co-occurrence counts are per corpus, and the two stats files are
     # keyed by different datasets ('50m'/'100m'/… vs 'wikipedia'), so they are
     # not interchangeable: the corpus-supported fact set differs between them.
+    # BEAR_CORPUS_DATASET names the column WITHIN that file, and must match the
+    # one run/filter_facts.sh used: the filter removed evidence for the facts
+    # that column marks corpus-supported, so scoring against a different column
+    # would select a fact set whose evidence was never removed.
     if [[ "$CORPUS" == wikipedia ]]; then
         BEAR_CORPUS_STATS="$BUNDLE_ROOT/data/bear_corpus_stats_wikipedia.json"
+        BEAR_CORPUS_DATASET=wikipedia
     else
         BEAR_CORPUS_STATS="$BUNDLE_ROOT/data/bear_corpus_stats.json"
+        BEAR_CORPUS_DATASET=10b
     fi
 else
     ATTR_CONFIG="$BUNDLE_ROOT/config/attribution_linguistic.yaml"
@@ -186,6 +192,7 @@ if [[ "$PHENOMENON" == facts ]]; then
         --bear-facts-dir "$CORPUS_ROOT" \
         --chunks $CHUNKS \
         --corpus-stats "$BEAR_CORPUS_STATS" \
+        --corpus-dataset "$BEAR_CORPUS_DATASET" \
         --alias-cache "$BUNDLE_ROOT/data/wikidata_alias_cache.json" \
         --max-base "$MAX_BASE" \
         ${bear_pairs_args[@]+"${bear_pairs_args[@]}"} \

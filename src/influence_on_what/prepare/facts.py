@@ -293,7 +293,9 @@ def build_bear_queries(
                 verdict = "unknown"
             elif not full_learned:
                 verdict = "not_learned"
-            elif filt_n == 0:
+            elif not filt_learned:
+                # "Not learned" is the fact-level criterion (correct on EVERY
+                # template), so failing any one template counts as forgotten.
                 verdict = "Forgotten"
             else:
                 verdict = "Retained"
